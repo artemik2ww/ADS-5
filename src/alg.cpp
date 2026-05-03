@@ -39,7 +39,7 @@ std::string infx2pstfx(const std::string& inf) {
         post += ' ';
         stack.pop();
       }
-      stack.pop();  // удаляем '('
+      stack.pop();
     } else if (is_operator(c)) {
       while (!stack.isEmpty() &&
              is_operator(stack.top()) &&
