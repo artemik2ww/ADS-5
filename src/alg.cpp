@@ -1,117 +1,98 @@
 // Copyright 2025 NNTU-CS
 #include <string>
 #include <map>
+#include <cctype>
 #include "tstack.h"
 
-int priority(char op) {
-  if (op == '+' || op == '-') return 1;
-  if (op == '*' || op == '/') return 2;
-  return 0;
-}
-
-bool is_operator(char c) {
-  return c == '+' || c == '-' || c == '*' || c == '/';
-}
-
 std::string infx2pstfx(const std::string& inf) {
-  TStack<char, 100> stack;
-  std::string post;
+    std::string post = "";
+    TStack<char, 100> stack;
+    bool lastWasDigit = false;
 
-  for (size_t i = 0; i < inf.size(); ++i) {
-    char c = inf[i];
-
-    if (c == ' ') {
-      continue;
+    for (size_t i = 0; i < inf.length(); ++i) {
+        char c = inf[i];
+        if (c == ' ') {
+            continue;
+        }
+        if (std::isdigit(c)) {
+            post += c;
+            lastWasDigit = true;
+        } else {
+            if (lastWasDigit) {
+                post += ' ';
+                lastWasDigit = false;
+            }
+            if (c == '(') {
+                stack.push(c);
+            } else if (c == ')') {
+                while (!stack.isEmpty() && stack.get() != '(') {
+                    post += stack.get();
+                    post += ' ';
+                    stack.pop();
+                }
+                stack.pop();
+            } else {
+                int pCurr = (c == '*' || c == '/') ? 2 : 1;
+                while (!stack.isEmpty()) {
+                    char top = stack.get();
+                    int pTop = (top == '*' || top == '/') ? 2 :
+                               (top == '+' || top == '-') ? 1 : 0;
+                    if (pTop >= pCurr) {
+                        post += top;
+                        post += ' ';
+                        stack.pop();
+                    } else {
+                        break;
+                    }
+                }
+                stack.push(c);
+            }
+        }
     }
-
-    if (std::isdigit(c)) {
-      while (i < inf.size() && std::isdigit(inf[i])) {
-        post += inf[i];
-        ++i;
-      }
-      post += ' ';
-      --i;
-    } else if (c == '(') {
-      stack.push(c);
-    } else if (c == ')') {
-      while (!stack.isEmpty() && stack.top() != '(') {
-        post += stack.top();
+    if (lastWasDigit) {
+        post += ' ';
+    }
+    while (!stack.isEmpty()) {
+        post += stack.get();
         post += ' ';
         stack.pop();
-      }
-      stack.pop();
-    } else if (is_operator(c)) {
-      while (!stack.isEmpty() &&
-             is_operator(stack.top()) &&
-             priority(stack.top()) >= priority(c)) {
-        post += stack.top();
-        post += ' ';
-        stack.pop();
-      }
-      stack.push(c);
     }
-  }
-
-  while (!stack.isEmpty()) {
-    post += stack.top();
-    post += ' ';
-    stack.pop();
-  }
-
-  if (!post.empty() && post.back() == ' ') {
-    post.pop_back();
-  }
-
-  return post;
+    if (!post.empty() && post.back() == ' ') {
+        post.pop_back();
+    }
+    return post;
 }
 
-int eval(const std::string& post) {
-  TStack<int, 100> stack;
+int eval(const std::string& pref) {
+    TStack<int, 100> stack;
+    int currentNum = 0;
+    bool hasNum = false;
 
-  for (size_t i = 0; i < post.size(); ++i) {
-    char c = post[i];
-
-    if (c == ' ') {
-      continue;
+    for (size_t i = 0; i < pref.length(); ++i) {
+        char c = pref[i];
+        if (std::isdigit(c)) {
+            currentNum = currentNum * 10 + (c - '0');
+            hasNum = true;
+        } else {
+            if (hasNum) {
+                stack.push(currentNum);
+                currentNum = 0;
+                hasNum = false;
+            }
+            if (c != ' ') {
+                int val2 = stack.get(); stack.pop();
+                int val1 = stack.get(); stack.pop();
+                int out = 0;
+                if (c == '+') out = val1 + val2;
+                if (c == '-') out = val1 - val2;
+                if (c == '*') out = val1 * val2;
+                if (c == '/') out = (val2 != 0) ? (val1 / val2) : 0;
+                stack.push(out);
+            }
+        }
     }
-
-    if (std::isdigit(c)) {
-      int num = 0;
-
-      while (i < post.size() && std::isdigit(post[i])) {
-        num = num * 10 + (post[i] - '0');
-        ++i;
-      }
-
-      stack.push(num);
-      --i;
-    } else if (is_operator(c)) {
-      int b = stack.top();
-      stack.pop();
-
-      int a = stack.top();
-      stack.pop();
-
-      int result = 0;
-
-      switch (c) {
-        case '+':
-          result = a + b;
-          break;
-        case '-':
-          result = a - b;
-          break;
-        case '*':
-          result = a * b;
-          break;
-        case '/':
-          result = a / b;
-          break;
-      }
-
-      stack.push(result);
+    if (hasNum) {
+        stack.push(currentNum);
     }
-  }
-
-  return stack.top();
+    return stack.get();
 }
